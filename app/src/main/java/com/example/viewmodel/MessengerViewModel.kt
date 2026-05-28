@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 
 sealed class Screen {
     object Onboarding : Screen()
+    object Registration : Screen()
     object Chats : Screen()
     data class ActiveChat(val chatId: Long) : Screen()
     object Cloud : Screen()
@@ -51,6 +52,12 @@ class MessengerViewModel(application: Application) : AndroidViewModel(applicatio
     )
 
     val gifts = repository.giftsFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    val plugins = repository.pluginsFlow.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
@@ -114,11 +121,14 @@ class MessengerViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             repository.preseedDatabaseIfEmpty()
             
-            // Observe onboarding status to redirect to onboarding if needed
+            // Observe onboarding and registration status to redirect accordingly
             profile.collect { prof ->
                 if (prof != null) {
                     if (!prof.completedOnboarding && _currentScreen.value is Screen.Chats) {
                         _currentScreen.value = Screen.Onboarding
+                    } else if (prof.completedOnboarding && !prof.isRegistered && 
+                        (_currentScreen.value is Screen.Chats || _currentScreen.value is Screen.Profile || _currentScreen.value is Screen.Cloud)) {
+                        _currentScreen.value = Screen.Registration
                     }
                 }
             }
@@ -144,10 +154,38 @@ class MessengerViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             val prof = repository.getProfile()
             repository.saveProfile(prof.copy(completedOnboarding = true))
-            _currentScreen.value = Screen.Chats
-            triggerXpToast("Setup complete! +25 XP")
+            _currentScreen.value = Screen.Registration
+            triggerXpToast("Onboarding complete! Please register secure nickname.")
             repository.awardXp(25)
         }
+    }
+
+    // REGISTRATION ACTION
+    fun registerSecureNickname(username: String, avatar: String): Boolean {
+        // Validation: "проверкой нет ли таких же аккаунтов"
+        val lowercaseName = username.trim().lowercase()
+        val blacklisted = listOf("alice", "gemini", "support", "ghostoperative", "admin", "primegramm")
+        if (blacklisted.any { lowercaseName.contains(it) }) {
+            triggerXpToast("Name taken on secure index! Use a unique alias.")
+            return false
+        }
+        if (username.trim().length < 3) {
+            triggerXpToast("Username is too short! Minimum 3 chars.")
+            return false
+        }
+
+        viewModelScope.launch {
+            val prof = repository.getProfile()
+            repository.saveProfile(prof.copy(
+                username = username.trim(),
+                avatarUrlOrEmoji = avatar,
+                isRegistered = true
+            ))
+            _currentScreen.value = Screen.Chats
+            triggerXpToast("Secure network registration verified! +100 XP")
+            repository.awardXp(100)
+        }
+        return true
     }
 
     // NAVIGATION
@@ -190,6 +228,29 @@ class MessengerViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             val current = repository.getProfile()
             repository.saveProfile(current.copy(selectedThemeIndex = index))
+        }
+    }
+
+    fun updateCustomStyling(
+        primaryHex: String,
+        secondaryHex: String,
+        backgroundHex: String,
+        fontFamily: String,
+        bubbleRadius: Int
+    ) {
+        viewModelScope.launch {
+            val current = repository.getProfile()
+            repository.saveProfile(
+                current.copy(
+                    customPrimaryColor = primaryHex,
+                    customSecondaryColor = secondaryHex,
+                    customBackgroundColor = backgroundHex,
+                    customFontFamily = fontFamily,
+                    customBubbleRadius = bubbleRadius
+                )
+            )
+            triggerXpToast("Custom style applied! +10 XP")
+            repository.awardXp(10)
         }
     }
 
@@ -387,15 +448,28 @@ class MessengerViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun updateAvatar(avatarUrlOrEmoji: String) {
+        viewModelScope.launch {
+            val p = repository.getProfile()
+            repository.saveProfile(p.copy(avatarUrlOrEmoji = avatarUrlOrEmoji))
+            triggerXpToast("Custom Avatar identity updated!")
+        }
+    }
+
     // GIFTS FLOW
     fun makeGiftExchange(giftName: String, receiver: String, starPrice: Int, txtNote: String) {
         viewModelScope.launch {
             val p = repository.getProfile()
             if (p.stars >= starPrice) {
                 repository.sendGift(giftName, "Me", receiver, starPrice, txtNote)
-                triggerXpToast("Gifted $giftName to $receiver! +${starPrice * 3} XP")
+                val ratingBumps = (starPrice / 10).coerceAtLeast(1)
+                val updatedProf = repository.getProfile()
+                repository.saveProfile(updatedProf.copy(
+                    senderGiftRating = updatedProf.senderGiftRating + ratingBumps
+                ))
+                triggerXpToast("Gifted $giftName to $receiver! +${starPrice * 3} XP & Rating Rank +$ratingBumps")
             } else {
-                triggerXpToast("Insufficient stars! Play TicTacToe or upgrade to Premium.")
+                triggerXpToast("Insufficient stars! Send more E2E chats to compile stars securely.")
             }
         }
     }
@@ -421,6 +495,35 @@ class MessengerViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    // CUSTOM PLUGINS HANDLERS
+    fun togglePlugin(id: Long, enabled: Boolean) {
+        viewModelScope.launch {
+            repository.togglePlugin(id, enabled)
+            triggerXpToast(if (enabled) "Plugin successfully enabled!" else "Plugin disabled.")
+        }
+    }
+
+    fun installNewCustomPlugin(name: String, desc: String, type: String) {
+        viewModelScope.launch {
+            val plugin = CustomPlugin(
+                name = name,
+                description = desc,
+                type = type,
+                isEnabled = true
+            )
+            repository.savePlugin(plugin)
+            triggerXpToast("Custom Plugin registered dynamically! +15 XP")
+            repository.awardXp(15)
+        }
+    }
+
+    fun uninstallPlugin(id: Long) {
+        viewModelScope.launch {
+            repository.deletePlugin(id)
+            triggerXpToast("Modular Plugin shredded securely")
+        }
+    }
+
     // TICTACTOE MINIAPP PLAYGROUND (GAMIFICATION STIMULATOR)
     fun playTicTacToeMove(index: Int) {
         if (_ticTacToeWinner.value.isNotEmpty() || _ticTacToeBoard.value[index].isNotEmpty()) return
@@ -434,15 +537,15 @@ class MessengerViewModel(application: Application) : AndroidViewModel(applicatio
 
             if (checkTicTacToeWinner(currentBoard, "X")) {
                 _ticTacToeWinner.value = "Me"
-                repository.refundStars(15) // earn 15 stars!
-                triggerXpToast("Victory! Earned 15 Prime Stars! 😎")
+                repository.awardXp(15) // Earn XP instead of direct easy stars!
+                triggerXpToast("Victory! Earned 15 XP points securely! 😎")
                 return@launch
             }
 
             if (!currentBoard.contains("")) {
                 _ticTacToeWinner.value = "Draw"
-                repository.refundStars(3)
-                triggerXpToast("Draw! Earned 3 Prime Stars 🤝")
+                repository.awardXp(5) // Earn XP instead of stars!
+                triggerXpToast("Draw! Earned 5 XP points 🤝")
                 return@launch
             }
 
@@ -460,7 +563,7 @@ class MessengerViewModel(application: Application) : AndroidViewModel(applicatio
                     triggerXpToast("AI Node wins! Retry for better luck!")
                 } else if (!botBoard.contains("")) {
                     _ticTacToeWinner.value = "Draw"
-                    repository.refundStars(3)
+                    repository.awardXp(5)
                 }
             }
         }

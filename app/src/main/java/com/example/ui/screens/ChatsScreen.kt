@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.db.Chat
@@ -43,6 +44,8 @@ fun ChatsScreen(
     activeChat: Chat?,
     activeMessages: List<Message>,
     isDecrypting: Boolean,
+    plugins: List<com.example.data.db.CustomPlugin> = emptyList(),
+    onSavedToCloud: (String, String, String) -> Unit = { _, _, _ -> },
     onNavigateToChat: (Long) -> Unit,
     onNavigateBack: () -> Unit,
     onSendMessage: (String) -> Unit,
@@ -64,6 +67,9 @@ fun ChatsScreen(
             chat = activeChat,
             messages = activeMessages,
             isDecrypting = isDecrypting,
+            customBubbleRadius = profile?.customBubbleRadius ?: 16,
+            plugins = plugins,
+            onSavedToCloud = onSavedToCloud,
             onBack = onNavigateBack,
             onSendMessage = onSendMessage,
             onDeleteChat = { onDeleteChat(activeChat.id) }
@@ -284,18 +290,63 @@ fun ChatsScreen(
                                 .weight(1f),
                             contentAlignment = Alignment.Center
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    imageVector = Icons.Default.NoEncryption,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(64.dp),
-                                    tint = Color.White.copy(alpha = 0.08f)
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    "No active encryption nodes",
-                                    color = Color(0xFF64748B)
-                                )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(24.dp)
+                            ) {
+                                if (searchQuery.isNotBlank()) {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B).copy(alpha = 0.5f)),
+                                        border = BorderStroke(1.dp, Color(0xFF3B82F6).copy(alpha = 0.3f)),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ) {
+                                        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Icon(Icons.Default.WifiTethering, contentDescription = null, tint = Color(0xFF3B82F6), modifier = Modifier.size(36.dp))
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            Text(
+                                                "SECURE PEER ROUTING SEARCH",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 12.sp,
+                                                color = Color(0xFF60A5FA),
+                                                letterSpacing = 1.sp
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                "No local peer matching '$searchQuery' was found. Tap below to establish a direct secure link via address routing index.",
+                                                fontSize = 12.sp,
+                                                color = Color.White.copy(alpha = 0.7f),
+                                                textAlign = TextAlign.Center
+                                            )
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                            Button(
+                                                onClick = {
+                                                    onCreateChat(searchQuery, 0, "👤")
+                                                    searchQuery = ""
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
+                                                shape = RoundedCornerShape(10.dp),
+                                                modifier = Modifier.testTag("establish_secure_link")
+                                            ) {
+                                                Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text("Open Secure Chat with '@$searchQuery'", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.NoEncryption,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(64.dp),
+                                        tint = Color.White.copy(alpha = 0.08f)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        "No active encryption nodes",
+                                        color = Color(0xFF64748B)
+                                    )
+                                }
                             }
                         }
                     } else {
@@ -482,11 +533,15 @@ fun ActiveChatView(
     chat: Chat,
     messages: List<Message>,
     isDecrypting: Boolean,
+    customBubbleRadius: Int,
+    plugins: List<com.example.data.db.CustomPlugin> = emptyList(),
+    onSavedToCloud: (String, String, String) -> Unit = { _, _, _ -> },
     onBack: () -> Unit,
     onSendMessage: (String) -> Unit,
     onDeleteChat: () -> Unit
 ) {
     var typedText by remember { mutableStateOf("") }
+    var showAttachmentPicker by remember { mutableStateOf(false) }
     val lazyListState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
@@ -567,7 +622,7 @@ fun ActiveChatView(
                         item { Spacer(modifier = Modifier.height(8.dp)) }
                         
                         items(messages) { msg ->
-                            MessageBubble(msg = msg)
+                            MessageBubble(msg = msg, customBubbleRadius = customBubbleRadius, plugins = plugins, onSavedToCloud = onSavedToCloud)
                         }
 
                         item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -585,6 +640,16 @@ fun ActiveChatView(
                                 .navigationBarsPadding(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            IconButton(onClick = { showAttachmentPicker = true }, modifier = Modifier.testTag("attachment_picker_btn")) {
+                                Icon(
+                                    imageVector = Icons.Default.AttachFile,
+                                    contentDescription = "Attach file preset",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(4.dp))
+
                             TextField(
                                 value = typedText,
                                 onValueChange = { typedText = it },
@@ -653,7 +718,12 @@ private fun statusSubtext(chat: Chat): String {
 }
 
 @Composable
-fun MessageBubble(msg: Message) {
+fun MessageBubble(
+    msg: Message,
+    customBubbleRadius: Int = 16,
+    plugins: List<com.example.data.db.CustomPlugin> = emptyList(),
+    onSavedToCloud: (String, String, String) -> Unit = { _, _, _ -> }
+) {
     val alignment = if (msg.isMyMessage) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = if (msg.isMyMessage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
     val textColor = if (msg.isMyMessage) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
@@ -665,10 +735,10 @@ fun MessageBubble(msg: Message) {
         Column(horizontalAlignment = if (msg.isMyMessage) Alignment.End else Alignment.Start) {
             Card(
                 shape = RoundedCornerShape(
-                    topStart = 16.dp,
-                    topEnd = 16.dp,
-                    bottomStart = if (msg.isMyMessage) 16.dp else 4.dp,
-                    bottomEnd = if (msg.isMyMessage) 4.dp else 16.dp
+                    topStart = customBubbleRadius.dp,
+                    topEnd = customBubbleRadius.dp,
+                    bottomStart = if (msg.isMyMessage) customBubbleRadius.dp else 4.dp,
+                    bottomEnd = if (msg.isMyMessage) 4.dp else customBubbleRadius.dp
                 ),
                 colors = CardDefaults.cardColors(containerColor = bubbleColor),
                 modifier = Modifier
@@ -676,12 +746,74 @@ fun MessageBubble(msg: Message) {
                     .testTag("message_bubble_${msg.id}")
             ) {
                 Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                    // Decrypted Text display
-                    Text(
-                        text = msg.text,
-                        fontSize = 15.sp,
-                        color = textColor
-                    )
+                    if (msg.text.startsWith("[FILE:") && msg.text.endsWith("]")) {
+                        // Render gorgeous file attachment card!
+                        val clean = msg.text.removePrefix("[FILE:").removeSuffix("]")
+                        val parts = clean.split("|")
+                        val fileName = parts.getOrNull(0)?.trim() ?: "file.bin"
+                        val fileSize = parts.getOrNull(1)?.trim() ?: "unknown"
+                        val fileType = parts.getOrNull(2)?.trim() ?: "application/octet-stream"
+                        
+                        FileAttachmentCard(
+                            fileName = fileName,
+                            fileSize = fileSize,
+                            fileType = fileType,
+                            isMyMessage = msg.isMyMessage,
+                            onSaved = { onSavedToCloud(fileName, fileSize, fileType) }
+                        )
+                    } else {
+                        Text(
+                            text = msg.text,
+                            fontSize = 15.sp,
+                            color = textColor
+                        )
+
+                        // Active plug-in triggers
+                        val translatorEnabled = plugins.find { it.type == "Translator" }?.isEnabled ?: false
+                        val cipherHexEnabled = plugins.find { it.type == "CipherHex" }?.isEnabled ?: false
+                        val spamFilterEnabled = plugins.find { it.type == "SpamFilter" }?.isEnabled ?: false
+
+                        if (translatorEnabled) {
+                            val translation = getMockTranslation(msg.text)
+                            if (translation.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "🌐 Translated: $translation",
+                                    fontSize = 12.sp,
+                                    color = if (msg.isMyMessage) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        if (cipherHexEnabled) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            val mdStr = "🔐 HEX: 0x${Integer.toHexString(msg.text.hashCode())}F43D${if (msg.isMyMessage) "1A" else "9C"}"
+                            Text(
+                                text = mdStr,
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = if (msg.isMyMessage) Color(0xFF22D3EE) else Color(0xFF0D9488)
+                            )
+                        }
+
+                        if (spamFilterEnabled && (msg.text.length > 20 || msg.text.contains("http"))) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color.Red.copy(alpha = 0.12f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    "⚠️ FILTER: Checked Secure",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Red
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(4.dp))
 
@@ -901,4 +1033,116 @@ fun CreateSecretChatDialog(
             }
         }
     )
+}
+
+@Composable
+fun FileAttachmentCard(
+    fileName: String,
+    fileSize: String,
+    fileType: String,
+    isMyMessage: Boolean,
+    onSaved: () -> Unit
+) {
+    var storedLocally by remember { mutableStateOf(false) }
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isMyMessage) Color.White.copy(alpha = 0.12f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.08f)
+        ),
+        border = BorderStroke(1.dp, if (isMyMessage) Color.White.copy(alpha = 0.2f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isMyMessage) Color.White.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = when {
+                            fileType.contains("pdf") -> Icons.Default.PictureAsPdf
+                            fileType.contains("image") -> Icons.Default.Image
+                            else -> Icons.Default.InsertDriveFile
+                        },
+                        contentDescription = null,
+                        tint = if (isMyMessage) Color.White else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = fileName,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = if (isMyMessage) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "$fileSize • ${fileType.uppercase()}",
+                        fontSize = 10.sp,
+                        color = if (isMyMessage) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(10.dp))
+            
+            Button(
+                onClick = {
+                    onSaved()
+                    storedLocally = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(32.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (storedLocally) Color(0xFF22C55E) else MaterialTheme.colorScheme.primary,
+                    contentColor = if (storedLocally) Color.White else MaterialTheme.colorScheme.onPrimary
+                ),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Icon(
+                    imageVector = if (storedLocally) Icons.Default.CheckCircle else Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = if (storedLocally) "Saved to Secure Offline Vault" else "Save decrypted file payload",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+private fun getMockTranslation(text: String): String {
+    val t = text.trim().lowercase()
+    return when {
+         t.contains("meet") -> "Давай встретимся в обычном конспиративном доме."
+         t.contains("channel") -> "Канал безопасности инициализирован."
+         t.contains("mode") -> "Режим невидимки активирован?"
+         t.contains("perfect") -> "Отлично. А невидимка включена?"
+         t.contains("yes") -> "Да, индикация ввода отключена."
+         t.contains("hi") || t.contains("hello") -> "Привет! Я умный ИИ Помощник Prime."
+         t.contains("thank") -> "Спасибо за использование Primegramm Beta."
+         t.contains("привет") -> "Hello! I am Gemini AI Node, companion helper."
+         t.contains("как дела") -> "How are you? Local network operates at 100%."
+         t.contains("спасибо") -> "Thank you for trusting Primegramm nodes."
+         else -> ""
+    }
 }

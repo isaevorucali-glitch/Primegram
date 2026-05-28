@@ -19,7 +19,15 @@ data class UserProfile(
     val selectedThemeIndex: Int = 0,
     val isGhostModeActive: Boolean = false,
     val chosenNotificationSound: String = "Classic Synth",
-    val completedOnboarding: Boolean = false
+    val completedOnboarding: Boolean = false,
+    val customPrimaryColor: String = "",
+    val customSecondaryColor: String = "",
+    val customBackgroundColor: String = "",
+    val customFontFamily: String = "Default",
+    val customBubbleRadius: Int = 16,
+    val avatarUrlOrEmoji: String = "👻",
+    val senderGiftRating: Int = 0,
+    val isRegistered: Boolean = false
 )
 
 @Entity(tableName = "chats")
@@ -81,6 +89,16 @@ data class GiftExchange(
     val starCost: Int,
     val timestamp: Long = System.currentTimeMillis(),
     val message: String = ""
+)
+
+@Entity(tableName = "custom_plugins")
+data class CustomPlugin(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val description: String,
+    val type: String, // "Translator", "CipherHex", "SpamFilter", "CustomAPI"
+    val isEnabled: Boolean = true,
+    val configData: String = ""
 )
 
 // ==========================================
@@ -163,6 +181,19 @@ interface PrimeDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveGift(gift: GiftExchange): Long
+
+    // Plugins
+    @Query("SELECT * FROM custom_plugins ORDER BY id ASC")
+    fun observePlugins(): Flow<List<CustomPlugin>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun savePlugin(plugin: CustomPlugin)
+
+    @Query("UPDATE custom_plugins SET isEnabled = :enabled WHERE id = :id")
+    suspend fun togglePlugin(id: Long, enabled: Boolean)
+
+    @Query("DELETE FROM custom_plugins WHERE id = :id")
+    suspend fun deletePlugin(id: Long)
 }
 
 // ==========================================
@@ -176,9 +207,10 @@ interface PrimeDao {
         Message::class,
         CloudFile::class,
         BotMiniApp::class,
-        GiftExchange::class
+        GiftExchange::class,
+        CustomPlugin::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

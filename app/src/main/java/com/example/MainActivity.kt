@@ -64,13 +64,26 @@ class MainActivity : ComponentActivity() {
       // Gifts
       val giftsList by viewModel.gifts.collectAsStateWithLifecycle()
 
+      // Plugins system flow
+      val pluginsList by viewModel.plugins.collectAsStateWithLifecycle()
+
       // Gamification notification overlay toast
       val xpToastMsgValue by viewModel.xpToastMsg.collectAsStateWithLifecycle()
 
       // Load active theme index
       val themeIndex = profileState?.selectedThemeIndex ?: 0
+      val customP = profileState?.customPrimaryColor ?: ""
+      val customS = profileState?.customSecondaryColor ?: ""
+      val customBg = profileState?.customBackgroundColor ?: ""
+      val customFont = profileState?.customFontFamily ?: "Default"
 
-      MyApplicationTheme(paletteIndex = themeIndex) {
+      MyApplicationTheme(
+          paletteIndex = themeIndex,
+          customPrimaryHex = customP,
+          customSecondaryHex = customS,
+          customBackgroundHex = customBg,
+          customFontFamily = customFont
+      ) {
         Surface(
           modifier = Modifier.fillMaxSize(),
           color = MaterialTheme.colorScheme.background
@@ -127,6 +140,11 @@ class MainActivity : ComponentActivity() {
                   currentStep = onboardingStepState,
                   onNext = { viewModel.nextOnboardingStep() },
                   onSkip = { viewModel.skipOnboarding() }
+                )
+              }
+              is Screen.Registration -> {
+                RegistrationScreen(
+                  onRegister = { name, avatar -> viewModel.registerSecureNickname(name, avatar) }
                 )
               }
               else -> {
@@ -208,92 +226,113 @@ class MainActivity : ComponentActivity() {
                       .fillMaxSize()
                       .padding(innerPadding)
                   ) {
-                    when (screen) {
-                      is Screen.Chats -> {
-                        ChatsScreen(
-                          profile = profileState,
-                          chatsList = chatsList,
-                          activeChat = activeChatState,
-                          activeMessages = activeMessagesList,
-                          isDecrypting = isDecryptingState,
-                          onNavigateToChat = { id -> viewModel.navigateTo(Screen.ActiveChat(id)) },
-                          onNavigateBack = { viewModel.navigateTo(Screen.Chats) },
-                          onSendMessage = { txt -> viewModel.sendInstantMessage(txt) },
-                          onCreateChat = { companion, delayBurn, emoji -> 
-                            viewModel.createNewSecretChat(companion, delayBurn, emoji) 
-                          },
-                          onDeleteChat = { chatId -> viewModel.deleteChatCascade(chatId) },
-                          onToggleGhostMode = { viewModel.toggleGhostMode() }
-                        )
+                    AnimatedContent(
+                      targetState = screen,
+                      transitionSpec = {
+                        (slideInHorizontally { width -> width / 3 } + fadeIn(androidx.compose.animation.core.tween(300)))
+                          .togetherWith(slideOutHorizontally { width -> -width / 3 } + fadeOut(androidx.compose.animation.core.tween(300)))
+                      },
+                      label = "screen_transition",
+                      modifier = Modifier.fillMaxSize()
+                    ) { targetScreen ->
+                      when (targetScreen) {
+                        is Screen.Chats -> {
+                          ChatsScreen(
+                            profile = profileState,
+                            chatsList = chatsList,
+                            activeChat = activeChatState,
+                            activeMessages = activeMessagesList,
+                            isDecrypting = isDecryptingState,
+                            plugins = pluginsList,
+                            onSavedToCloud = { name, size, mime -> viewModel.addSecureFile(name, size, mime, false, "", "Offline Decoded Cache") },
+                            onNavigateToChat = { id -> viewModel.navigateTo(Screen.ActiveChat(id)) },
+                            onNavigateBack = { viewModel.navigateTo(Screen.Chats) },
+                            onSendMessage = { txt -> viewModel.sendInstantMessage(txt) },
+                            onCreateChat = { companion, delayBurn, emoji -> 
+                              viewModel.createNewSecretChat(companion, delayBurn, emoji) 
+                            },
+                            onDeleteChat = { chatId -> viewModel.deleteChatCascade(chatId) },
+                            onToggleGhostMode = { viewModel.toggleGhostMode() }
+                          )
+                        }
+                        is Screen.ActiveChat -> {
+                          // ChatsScreen automatically handles embedding the active chat view when activeChatState != null
+                          ChatsScreen(
+                            profile = profileState,
+                            chatsList = chatsList,
+                            activeChat = activeChatState,
+                            activeMessages = activeMessagesList,
+                            isDecrypting = isDecryptingState,
+                            plugins = pluginsList,
+                            onSavedToCloud = { name, size, mime -> viewModel.addSecureFile(name, size, mime, false, "", "Offline Decoded Cache") },
+                            onNavigateToChat = {},
+                            onNavigateBack = { viewModel.navigateTo(Screen.Chats) },
+                            onSendMessage = { txt -> viewModel.sendInstantMessage(txt) },
+                            onCreateChat = { _, _, _ -> },
+                            onDeleteChat = { chatId -> viewModel.deleteChatCascade(chatId) },
+                            onToggleGhostMode = {}
+                          )
+                        }
+                        is Screen.Cloud -> {
+                          CloudScreen(
+                            files = filesList,
+                            onAddFile = { name, size, mime, isSecret, pwd, content ->
+                              viewModel.addSecureFile(name, size, mime, isSecret, pwd, content)
+                            },
+                            onRemoveFile = { id -> viewModel.removeFile(id) }
+                          )
+                        }
+                        is Screen.GroupCall -> {
+                          GroupCallScreen(
+                            callState = callStateVal,
+                            callDuration = callDurationVal,
+                            isLowTrafficOn = isLowTrafficCompVal,
+                            audioMuted = audioMutedVal,
+                            videoMuted = videoMutedVal,
+                            onStartCall = { viewModel.initiateCall() },
+                            onToggleLowTraffic = { viewModel.toggleCallLowTraffic() },
+                            onToggleAudio = { viewModel.toggleAudioMute() },
+                            onToggleVideo = { viewModel.toggleVideoMute() },
+                            onHangup = { viewModel.hangupCall() }
+                          )
+                        }
+                        is Screen.MiniApps -> {
+                          MiniAppsScreen(
+                            botsList = botsList,
+                            ticTacToeBoard = tttBoard,
+                            ticTacToeWinner = tttWinner,
+                            webhookLogs = webhookLogsVal,
+                            plugins = pluginsList,
+                            onTogglePlugin = { id, enabled -> viewModel.togglePlugin(id, enabled) },
+                            onInstallPlugin = { name, desc, type -> viewModel.installNewCustomPlugin(name, desc, type) },
+                            onUninstallPlugin = { id -> viewModel.uninstallPlugin(id) },
+                            onPlayTicTacToeMove = { idx -> viewModel.playTicTacToeMove(idx) },
+                            onResetTicTacToe = { viewModel.resetTicTacToe() },
+                            onExecuteWebhook = { botId, url, payload -> 
+                              viewModel.simulateCustomWebhookTrigger(botId, url, payload) 
+                            },
+                            onRegisterCustomBot = { name, cat, emoji, desc, callbackUrl ->
+                              viewModel.buildCustomBot(name, cat, desc, emoji, callbackUrl)
+                            }
+                          )
+                        }
+                        is Screen.Profile -> {
+                          ProfileScreen(
+                            profile = profileState,
+                            giftsList = giftsList,
+                            onSelectTheme = { theme -> viewModel.selectTheme(theme) },
+                            onPurchasePremium = { viewModel.purchasePremium() },
+                            onSendGift = { gift, companion, starCost, greeting -> 
+                              viewModel.makeGiftExchange(gift, companion, starCost, greeting)
+                            },
+                            onChangeNotificationTone = { name -> viewModel.setNotificationSound(name) },
+                            onUpdateCustomStyling = { primary, secondary, bg, font, radius ->
+                              viewModel.updateCustomStyling(primary, secondary, bg, font, radius)
+                            }
+                          )
+                        }
+                        else -> {}
                       }
-                      is Screen.ActiveChat -> {
-                        // ChatsScreen automatically handles embedding the active chat view when activeChatState != null
-                        ChatsScreen(
-                          profile = profileState,
-                          chatsList = chatsList,
-                          activeChat = activeChatState,
-                          activeMessages = activeMessagesList,
-                          isDecrypting = isDecryptingState,
-                          onNavigateToChat = {},
-                          onNavigateBack = { viewModel.navigateTo(Screen.Chats) },
-                          onSendMessage = { txt -> viewModel.sendInstantMessage(txt) },
-                          onCreateChat = { _, _, _ -> },
-                          onDeleteChat = { chatId -> viewModel.deleteChatCascade(chatId) },
-                          onToggleGhostMode = {}
-                        )
-                      }
-                      is Screen.Cloud -> {
-                        CloudScreen(
-                          files = filesList,
-                          onAddFile = { name, size, mime, isSecret, pwd, content ->
-                            viewModel.addSecureFile(name, size, mime, isSecret, pwd, content)
-                          },
-                          onRemoveFile = { id -> viewModel.removeFile(id) }
-                        )
-                      }
-                      is Screen.GroupCall -> {
-                        GroupCallScreen(
-                          callState = callStateVal,
-                          callDuration = callDurationVal,
-                          isLowTrafficOn = isLowTrafficCompVal,
-                          audioMuted = audioMutedVal,
-                          videoMuted = videoMutedVal,
-                          onStartCall = { viewModel.initiateCall() },
-                          onToggleLowTraffic = { viewModel.toggleCallLowTraffic() },
-                          onToggleAudio = { viewModel.toggleAudioMute() },
-                          onToggleVideo = { viewModel.toggleVideoMute() },
-                          onHangup = { viewModel.hangupCall() }
-                        )
-                      }
-                      is Screen.MiniApps -> {
-                        MiniAppsScreen(
-                          botsList = botsList,
-                          ticTacToeBoard = tttBoard,
-                          ticTacToeWinner = tttWinner,
-                          webhookLogs = webhookLogsVal,
-                          onPlayTicTacToeMove = { idx -> viewModel.playTicTacToeMove(idx) },
-                          onResetTicTacToe = { viewModel.resetTicTacToe() },
-                          onExecuteWebhook = { botId, url, payload -> 
-                            viewModel.simulateCustomWebhookTrigger(botId, url, payload) 
-                          },
-                          onRegisterCustomBot = { name, cat, emoji, desc, callbackUrl ->
-                            viewModel.buildCustomBot(name, cat, desc, emoji, callbackUrl)
-                          }
-                        )
-                      }
-                      is Screen.Profile -> {
-                        ProfileScreen(
-                          profile = profileState,
-                          giftsList = giftsList,
-                          onSelectTheme = { theme -> viewModel.selectTheme(theme) },
-                          onPurchasePremium = { viewModel.purchasePremium() },
-                          onSendGift = { gift, companion, starCost, greeting -> 
-                            viewModel.makeGiftExchange(gift, companion, starCost, greeting)
-                          },
-                          onChangeNotificationTone = { name -> viewModel.setNotificationSound(name) }
-                        )
-                      }
-                      else -> {}
                     }
                   }
                 }

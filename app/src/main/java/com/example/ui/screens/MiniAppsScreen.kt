@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.db.BotMiniApp
+import com.example.data.db.CustomPlugin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +39,10 @@ fun MiniAppsScreen(
     ticTacToeBoard: List<String>,
     ticTacToeWinner: String,
     webhookLogs: List<String>,
+    plugins: List<CustomPlugin> = emptyList(),
+    onTogglePlugin: (Long, Boolean) -> Unit = { _, _ -> },
+    onInstallPlugin: (String, String, String) -> Unit = { _, _, _ -> },
+    onUninstallPlugin: (Long) -> Unit = { _ -> },
     onPlayTicTacToeMove: (Int) -> Unit,
     onResetTicTacToe: () -> Unit,
     onExecuteWebhook: (String, String, String) -> Unit,
@@ -199,6 +204,65 @@ fun MiniAppsScreen(
                                 app = app,
                                 onClick = { activeMiniAppId = app.id }
                             )
+                        }
+
+                        item {
+                            DeveloperApiHandbookCard()
+                        }
+
+                        item {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "DECENTRALIZED PLUGINS & CIS CORRELATION",
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF22D3EE),
+                                style = MaterialTheme.typography.labelSmall,
+                                letterSpacing = 1.sp
+                            )
+                        }
+
+                        if (plugins.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("No secure plugins installed on this peer terminal.", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+                                }
+                            }
+                        } else {
+                            items(plugins) { plugin ->
+                                PluginItemRow(
+                                    plugin = plugin,
+                                    onToggle = { onTogglePlugin(plugin.id, it) },
+                                    onUninstall = { onUninstallPlugin(plugin.id) }
+                                )
+                            }
+                        }
+
+                        item {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // Button to install new custom simulation plugin
+                            Button(
+                                onClick = {
+                                    onInstallPlugin(
+                                        "Secure Anti-Whale Auto Tracker", 
+                                        "Spam flags transactions above local limits automatically on peer nodes.",
+                                        "CustomAPI"
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth().testTag("install_new_plugin_button"),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22D3EE).copy(alpha = 0.11f), contentColor = Color(0xFF22D3EE)),
+                                border = BorderStroke(1.dp, Color(0xFF22D3EE).copy(alpha = 0.3f)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.Extension, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Compile & Install Custom Dev Plugin (+15 XP)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -760,4 +824,245 @@ fun CreateCustomBotDialog(
             }
         }
     )
+}
+
+@Composable
+fun DeveloperApiHandbookCard() {
+    var readInRussian by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp)
+            .testTag("dev_api_handbook_card"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF1E293B).copy(alpha = 0.5f)
+        ),
+        border = BorderStroke(1.dp, Color(0xFF3B82F6).copy(alpha = 0.25f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Terminal,
+                        contentDescription = null,
+                        tint = Color(0xFF60A5FA),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (readInRussian) "СПРАВОЧНИК РАЗРАБОТЧИКА API" else "DEVELOPER API SPECIFICATION",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 12.sp,
+                        color = Color(0xFF60A5FA),
+                        letterSpacing = 1.sp
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xFF3B82F6).copy(alpha = 0.15f))
+                        .clickable { readInRussian = !readInRussian }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (readInRussian) "ENG 🇬🇧" else "РУС 🇷🇺",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF60A5FA)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = if (readInRussian) {
+                    "PrimegrammBot API позволяет автоматизировать отправку сообщений, обрабатывать события в реальном времени посредством вебхуков и отвечать пользователям в защищенном канале."
+                } else {
+                    "The Primegramm Bot API lets you safely automate interactions, process realtime E2E events via webhook integrations, and return custom automated packets."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF94A3B8)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // METHOD 1: RECEIVE EVENT
+            Text(
+                text = if (readInRussian) "1. ФОРМАТ ЗАПРОСА ВЕБХУКА (POST)" else "1. INCOMING WEBHOOK PAYLOAD (POST)",
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = """// Outgoing from Primegramm
+{
+  "event": "messages.received",
+  "peer_id": "com.prime.9a0b",
+  "text_raw": "status --check",
+  "is_encrypted": true
+}""",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    color = Color(0xFF22C55E),
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // METHOD 2: RESPONSE RESPONSE
+            Text(
+                text = if (readInRussian) "2. ОТВЕТ ВАШЕГО СЕРВЕРА (JSON)" else "2. WORKFLOW AUTOMATION REPLY (JSON)",
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = """// Return to Primegramm
+{
+  "action": "reply",
+  "reply_text": "✅ Remote action verified.",
+  "send_coins": 5
+}""",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    color = Color(0xFF38BDF8),
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // PIPELINE INTEGRATION GUIDE
+            Text(
+                text = if (readInRussian) "ПОРЯДОК ПОДКЛЮЧЕНИЯ НОВОГО БОТА:" else "BOT ECOSYSTEM SETUP GUIDE:",
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                color = Color(0xFF94A3B8)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = if (readInRussian) {
+                    "• Нажмите '+' сверху экрана.\n" +
+                    "• Задайте имя бота, описание и POST-адрес API.\n" +
+                    "• Любые новые сообщения в чатах отправят триггер на этот URL.\n" +
+                    "• Бот автоматически выполнит ответ и добавит запись в лог терминала."
+                } else {
+                    "• Tap the '+' icon in the top right corner.\n" +
+                    "• Register bot name, token emoji, and callback endpoint.\n" +
+                    "• Outgoing conversation logs will map events directly code-side.\n" +
+                    "• The response automates replies and updates the sandbox log."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF64748B),
+                lineHeight = 16.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun PluginItemRow(
+    plugin: com.example.data.db.CustomPlugin,
+    onToggle: (Boolean) -> Unit,
+    onUninstall: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, if (plugin.isEnabled) Color(0xFF22D3EE).copy(alpha = 0.3f) else Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(
+            containerColor = if (plugin.isEnabled) Color(0xFF0F2D37).copy(alpha = 0.5f) else Color(0xFF1E293B).copy(alpha = 0.3f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(if (plugin.isEnabled) Color(0xFF22D3EE).copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (plugin.isEnabled) Icons.Default.SettingsInputAntenna else Icons.Default.Block,
+                        contentDescription = null,
+                        tint = if (plugin.isEnabled) Color(0xFF22D3EE) else Color.White.copy(alpha = 0.4f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = plugin.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "TYPE: ${plugin.type.uppercase()}",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF22D3EE)
+                    )
+                }
+
+                Switch(
+                    checked = plugin.isEnabled,
+                    onCheckedChange = onToggle,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color(0xFF22D3EE),
+                        checkedTrackColor = Color(0xFF22D3EE).copy(alpha = 0.5f)
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = plugin.description,
+                fontSize = 12.sp,
+                color = Color.White.copy(alpha = 0.61f)
+            )
+
+            if (plugin.type == "CustomAPI") {
+                Spacer(modifier = Modifier.height(10.dp))
+                Button(
+                    onClick = onUninstall,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.1f), contentColor = Color.Red),
+                    modifier = Modifier.fillMaxWidth().height(32.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(12.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Decompile Plugin Block", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
 }

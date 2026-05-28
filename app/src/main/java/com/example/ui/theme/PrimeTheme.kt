@@ -249,6 +249,72 @@ object PrimeThemes {
             surface = Color(0xFF44318D),
             onBackground = Color(0xFFFFF3FA),
             onSurface = Color(0xFFFFF3FA)
+        ),
+        PrimeThemePalette(
+            name = "Dracula's Vault",
+            isDark = true,
+            primary = Color(0xFFBD93F9),
+            secondary = Color(0xFF50FA7B),
+            tertiary = Color(0xFFFF79C6),
+            background = Color(0xFF282A36),
+            surface = Color(0xFF343746),
+            onBackground = Color(0xFFF8F8F2),
+            onSurface = Color(0xFFF8F8F2)
+        ),
+        PrimeThemePalette(
+            name = "Toxic Acid Lime",
+            isDark = true,
+            primary = Color(0xFFA3E635),
+            secondary = Color(0xFF84CC16),
+            tertiary = Color(0xFFFACC15),
+            background = Color(0xFF090D16),
+            surface = Color(0xFF111827),
+            onBackground = Color(0xFFECFDF5),
+            onSurface = Color(0xFFECFDF5)
+        ),
+        PrimeThemePalette(
+            name = "Amber Ember",
+            isDark = true,
+            primary = Color(0xFFF97316),
+            secondary = Color(0xFFF59E0B),
+            tertiary = Color(0xFFEF4444),
+            background = Color(0xFF180802),
+            surface = Color(0xFF2D1107),
+            onBackground = Color(0xFFFFF1F2),
+            onSurface = Color(0xFFFFF1F2)
+        ),
+        PrimeThemePalette(
+            name = "Deep Forest Wood",
+            isDark = true,
+            primary = Color(0xFF22C55E),
+            secondary = Color(0xFF10B981),
+            tertiary = Color(0xFF84CC16),
+            background = Color(0xFF051B11),
+            surface = Color(0xFF0C2B1C),
+            onBackground = Color(0xFFF0FDF4),
+            onSurface = Color(0xFFF0FDF4)
+        ),
+        PrimeThemePalette(
+            name = "Lavender Dawn Light",
+            isDark = false,
+            primary = Color(0xFF8B5CF6),
+            secondary = Color(0xFFA78BFA),
+            tertiary = Color(0xFFEC4899),
+            background = Color(0xFFFAF5FF),
+            surface = Color(0xFFFFFFFF),
+            onBackground = Color(0xFF4C1D95),
+            onSurface = Color(0xFF4C1D95)
+        ),
+        PrimeThemePalette(
+            name = "Nordic Pale Frost",
+            isDark = false,
+            primary = Color(0xFF0284C7),
+            secondary = Color(0xFF38BDF8),
+            tertiary = Color(0xFF14B8A6),
+            background = Color(0xFFF0F9FF),
+            surface = Color(0xFFFFFFFF),
+            onBackground = Color(0xFF0369A1),
+            onSurface = Color(0xFF0369A1)
         )
     )
 

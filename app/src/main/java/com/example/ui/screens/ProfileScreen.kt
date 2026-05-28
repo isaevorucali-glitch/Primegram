@@ -40,7 +40,8 @@ fun ProfileScreen(
     onSelectTheme: (Int) -> Unit,
     onPurchasePremium: () -> Unit,
     onSendGift: (String, String, Int, String) -> Unit,
-    onChangeNotificationTone: (String) -> Unit
+    onChangeNotificationTone: (String) -> Unit,
+    onUpdateCustomStyling: (String, String, String, String, Int) -> Unit
 ) {
     var showGiftDialog by remember { mutableStateOf(false) }
     var activePremiumTab by remember { mutableStateOf(false) }
@@ -392,6 +393,271 @@ fun ProfileScreen(
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            // DYNAMIC INDIVIDUAL UI CUSTOMIZER OR ПЕРСОНАЛИЗАЦИЯ ИНТЕРФЕЙСА
+            var speakRussian by remember { mutableStateOf(false) }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (speakRussian) "ИНДИВИДУАЛЬНЫЕ НАСТРОЙКИ СТИЛЯ" else "INDIVIDUAL STYLE CUSTOMIZER",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelSmall
+                )
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                        .clickable { speakRussian = !speakRussian }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (speakRussian) "In English 🇬🇧" else "На русском 🇷🇺",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth().testTag("custom_element_style_picker"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)),
+                border = ButtonDefaults.outlinedButtonBorder
+            ) {
+                var selectedPColor by remember { mutableStateOf(profile?.customPrimaryColor ?: "") }
+                var selectedFont by remember { mutableStateOf(profile?.customFontFamily ?: "Default") }
+                var selectedRadius by remember { mutableStateOf(profile?.customBubbleRadius ?: 16) }
+
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text(
+                        text = if (speakRussian) "Переопределите цвета, шрифты и кривизну элементов мессенджера независимо от пресета:" 
+                        else "Override primary palette, text typography faces, and structure layout nodes independently:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    )
+
+                    // COLOR CHIPS ROW
+                    Column {
+                        Text(
+                            text = if (speakRussian) "ЦВЕТОВОЕ РЕШЕНИЕ (HEX)" else "ACCENT PALETTE (HEX)",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        
+                        val hexPresets = listOf(
+                            "" to "Preset",
+                            "#3B82F6" to "Sapphire",
+                            "#FF71CE" to "Sakura",
+                            "#A3E635" to "Toxic",
+                            "#BD93F9" to "Dracula",
+                            "#F97316" to "Amber",
+                            "#EF4444" to "Lava"
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            hexPresets.take(4).forEach { (hexVal, tag) ->
+                                val active = selectedPColor == hexVal
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                                        .clickable { selectedPColor = hexVal }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(tag, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground)
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            hexPresets.drop(4).forEach { (hexVal, tag) ->
+                                val active = selectedPColor == hexVal
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                                        .clickable { selectedPColor = hexVal }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(tag, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground)
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = selectedPColor,
+                            onValueChange = { selectedPColor = it },
+                            label = { Text(if (speakRussian) "Собственный HEX код (#RRGGBB)" else "Custom HEX Value (#RRGGBB)") },
+                            modifier = Modifier.fillMaxWidth().testTag("custom_hex_input"),
+                            shape = RoundedCornerShape(8.dp),
+                            singleLine = true,
+                            textStyle = androidx.compose.ui.text.TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                        )
+                    }
+
+                    // FONTS ROW
+                    Column {
+                        Text(
+                            text = if (speakRussian) "ШРИФТОВАЯ ГАРНИТУРА" else "TYPOGRAPHY FONTS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        val fonts = listOf("Default", "Serif", "Monospace", "Cursive")
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            fonts.forEach { f ->
+                                val active = selectedFont == f
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                                        .clickable { selectedFont = f }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = f,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // BUBBLE RADIUS ROW
+                    Column {
+                        Text(
+                            text = if (speakRussian) "КРИВИЗНА СООБЩЕНИЙ (КРАЯ)" else "BUBBLE CORNER ROUNDNESS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        val radii = listOf(4 to "Sharp", 12 to "Elegant", 16 to "Bubble", 26 to "Circle")
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            radii.forEach { (radiusVal, label) ->
+                                val active = selectedRadius == radiusVal
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                                        .clickable { selectedRadius = radiusVal }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (speakRussian) {
+                                            when(label) {
+                                                "Sharp" -> "Острые"
+                                                "Elegant" -> "Изящные"
+                                                "Bubble" -> "Облачко"
+                                                else -> "Круглые"
+                                            }
+                                        } else label,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // REALTIME SAMPLE BUBBLE PREVIEW
+                    Column {
+                        Text(
+                            text = if (speakRussian) "ИНТЕРАКТИВНЫЙ ПРЕДПРОСМОТР" else "LIVE COMPONENT PREVIEW",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.Black.copy(alpha = 0.15f))
+                                .padding(12.dp)
+                        ) {
+                            Card(
+                                shape = RoundedCornerShape(
+                                    topStart = selectedRadius.dp,
+                                    topEnd = selectedRadius.dp,
+                                    bottomStart = selectedRadius.dp,
+                                    bottomEnd = 4.dp
+                                ),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (selectedPColor.isNotBlank()) com.example.ui.theme.parseHexColor(selectedPColor, MaterialTheme.colorScheme.primary) else MaterialTheme.colorScheme.primary
+                                ),
+                                modifier = Modifier.align(Alignment.CenterEnd).widthIn(max = 240.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text(
+                                        text = if (speakRussian) "Привет! Это предпросмотр сообщения с твоими стилями." else "Hello! This is an interactive message bubble showing your new custom design.",
+                                        fontSize = 12.sp,
+                                        color = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text("12:00 PM • Verified Encrypted", fontSize = 8.sp, color = Color.White.copy(alpha = 0.6f))
+                                }
+                            }
+                        }
+                    }
+
+                    // DEPLOY BUTTON
+                    Button(
+                        onClick = {
+                            onUpdateCustomStyling(selectedPColor, "", "", selectedFont, selectedRadius)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.fillMaxWidth().testTag("apply_custom_styles_btn"),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Palette, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (speakRussian) "Применить конфигурацию стилей" else "Apply Dynamic Theme Config",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 13.sp
+                        )
                     }
                 }
             }

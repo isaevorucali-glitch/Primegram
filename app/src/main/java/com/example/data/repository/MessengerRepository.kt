@@ -11,6 +11,7 @@ class MessengerRepository(private val dao: PrimeDao) {
     val filesFlow: Flow<List<CloudFile>> = dao.observeCloudFiles()
     val botsFlow: Flow<List<BotMiniApp>> = dao.observeBotMiniApps()
     val giftsFlow: Flow<List<GiftExchange>> = dao.observeGifts()
+    val pluginsFlow: Flow<List<CustomPlugin>> = dao.observePlugins()
 
     fun observeMessagesForChat(chatId: Long): Flow<List<Message>> = dao.observeMessages(chatId)
 
@@ -47,6 +48,12 @@ class MessengerRepository(private val dao: PrimeDao) {
         )
         val msgId = dao.saveMessage(message)
         dao.updateLastMessage(chatId, text, System.currentTimeMillis())
+        
+        // Stars are strictly earned only for sending or receiving actual texts (1 star per message)
+        val currentProfile = getProfile()
+        dao.saveProfile(currentProfile.copy(
+            stars = currentProfile.stars + 1
+        ))
         return msgId
     }
 
@@ -144,6 +151,18 @@ class MessengerRepository(private val dao: PrimeDao) {
             integrationUrl = url
         )
         dao.saveBotMiniApp(bot)
+    }
+
+    suspend fun savePlugin(plugin: CustomPlugin) {
+        dao.savePlugin(plugin)
+    }
+
+    suspend fun togglePlugin(id: Long, enabled: Boolean) {
+        dao.togglePlugin(id, enabled)
+    }
+
+    suspend fun deletePlugin(id: Long) {
+        dao.deletePlugin(id)
     }
 
     // Seed initial values to make the app incredibly interactive
@@ -290,6 +309,31 @@ class MessengerRepository(private val dao: PrimeDao) {
                 category = "MiniApp",
                 iconEmoji = "🌐",
                 description = "Map post payloads to external webhook URLs (e.g. n8n, Zapier) directly from your chats."
+            ))
+
+            // Seed default modular custom plugins
+            dao.savePlugin(CustomPlugin(
+                name = "Real-Time Translator (RU <-> EN)",
+                description = "Automatically overlay translations under English or Russian chat text bubbles dynamically.",
+                type = "Translator",
+                isEnabled = true,
+                configData = ""
+            ))
+
+            dao.savePlugin(CustomPlugin(
+                name = "AES-256 Cyan Hex Cipher",
+                description = "Renders the actual live dynamic cryptographic hexadecimal hash beneath messages to visualize protection.",
+                type = "CipherHex",
+                isEnabled = false,
+                configData = ""
+            ))
+
+            dao.savePlugin(CustomPlugin(
+                name = "Intelligent Anti-Spam Security Filter",
+                description = "Scans incoming conversation waves and flags repeating characters or fishing scripts with a system banner.",
+                type = "SpamFilter",
+                isEnabled = true,
+                configData = ""
             ))
         }
     }
