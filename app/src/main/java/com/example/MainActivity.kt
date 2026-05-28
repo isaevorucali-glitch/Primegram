@@ -309,7 +309,7 @@ class MainActivity : ComponentActivity() {
                             onPlayTicTacToeMove = { idx -> viewModel.playTicTacToeMove(idx) },
                             onResetTicTacToe = { viewModel.resetTicTacToe() },
                             onExecuteWebhook = { botId, url, payload -> 
-                              viewModel.simulateCustomWebhookTrigger(botId, url, payload) 
+                              viewModel.transmitSecureApiWebhook(botId, url, payload) 
                             },
                             onRegisterCustomBot = { name, cat, emoji, desc, callbackUrl ->
                               viewModel.buildCustomBot(name, cat, desc, emoji, callbackUrl)

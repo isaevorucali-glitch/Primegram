@@ -70,8 +70,8 @@ fun GroupCallScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0F1115),
-                    titleContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         }
@@ -80,7 +80,7 @@ fun GroupCallScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color(0xFF0F1115))
+                .background(MaterialTheme.colorScheme.background)
         ) {
             when (callState) {
                 "idle" -> {

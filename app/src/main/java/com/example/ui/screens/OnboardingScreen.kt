@@ -37,7 +37,7 @@ fun OnboardingScreen(
     onNext: () -> Unit,
     onSkip: () -> Unit
 ) {
-    var languageModeRussian by remember { mutableStateOf(false) }
+    var languageModeRussian by remember { mutableStateOf(true) }
 
     val onboardingData = if (languageModeRussian) {
         listOf(

@@ -42,7 +42,7 @@ fun RegistrationScreen(
 ) {
     var rawUsername by remember { mutableStateOf("") }
     var chosenAvatar by remember { mutableStateOf("🕵️‍♂️") }
-    var languageRussian by remember { mutableStateOf(false) }
+    var languageRussian by remember { mutableStateOf(true) }
     var showScanOverlay by remember { mutableStateOf(false) }
     var scanStateText by remember { mutableStateOf("") }
     var currentProgress by remember { mutableStateOf(0f) }

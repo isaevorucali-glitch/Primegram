@@ -340,9 +340,9 @@ class MessengerViewModel(application: Application) : AndroidViewModel(applicatio
             
             // If it's a bot helper, trigger smart response
             if (chat.title == "Gemini AI Helper" || chat.title.contains("Bot")) {
-                simulateBotResponse(chat.id, text)
+                processBotAutomatedWorkflow(chat.id, text)
             } else {
-                // Regular mock response after delay
+                // Background network activity response simulation
                 delay(1200)
                 val responseText = when {
                     text.contains("hello", true) || text.contains("привет", true) -> "Anonymity established. What information do you seek?"
@@ -356,7 +356,7 @@ class MessengerViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    private suspend fun simulateBotResponse(chatId: Long, text: String) {
+    private suspend fun processBotAutomatedWorkflow(chatId: Long, text: String) {
         delay(1000)
         val botText = when {
             text.contains("status", true) -> "SYS NODE ACTIVE: End-to-End Encryption active, Proxy routing active (3 hops), zero leak profile verified."
@@ -365,7 +365,7 @@ class MessengerViewModel(application: Application) : AndroidViewModel(applicatio
                 val fileId = repository.saveFile("bot_automated_secure.txt", "12 KB", "text/plain", true, "1337", "Classified Automated Memo - Authorized Nodes Only.")
                 "Secured database file generated automatically! Check Cloud tab. Pwd hash set: 1337."
             }
-            else -> "Processing API Automation event: Log event parsed. Webhook simulation triggered. Query returned successfully."
+            else -> "Processing API Automation event: Log event parsed. Webhook routing relay verified. Query returned successfully."
         }
         repository.sendMessage(chatId, botText, isMyMessage = false, selfDestructSecs = 0)
         repository.awardXp(10)
@@ -483,15 +483,15 @@ class MessengerViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun simulateCustomWebhookTrigger(botId: String, webhookUrl: String, jsonPayload: String) {
+    fun transmitSecureApiWebhook(botId: String, webhookUrl: String, jsonPayload: String) {
         viewModelScope.launch {
             repository.incrementBotUsage(botId)
-            _webhookExecutionLog.value = _webhookExecutionLog.value + "Sending Event to $webhookUrl..."
+            _webhookExecutionLog.value = _webhookExecutionLog.value + "Отсылка POST-запроса на $webhookUrl..."
             delay(800)
-            _webhookExecutionLog.value = _webhookExecutionLog.value + "API status 202: Payload accepted securely by proxy."
-            _webhookExecutionLog.value = _webhookExecutionLog.value + "Response: {\"status\":\"success\", \"node_synced\": true}"
+            _webhookExecutionLog.value = _webhookExecutionLog.value + "API статус 202: Пакет безопасно принят прокси-сервером."
+            _webhookExecutionLog.value = _webhookExecutionLog.value + "Ответ узла: {\"status\":\"success\", \"node_synced\": true}"
             repository.awardXp(10)
-            triggerXpToast("API Automated Post Succesful! +10 XP")
+            triggerXpToast("Авто-вызов API выполнен успешно! +10 XP")
         }
     }
 

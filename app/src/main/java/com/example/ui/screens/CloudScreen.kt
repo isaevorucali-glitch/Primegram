@@ -176,8 +176,8 @@ fun CloudScreen(
                         }
                     },
                     colors = TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = Color(0xFF0F1115),
-                        titleContentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
                     ),
                     actions = {
                         IconButton(onClick = { isVaultUnlocked = false; pinValue = "" }) {
@@ -200,7 +200,7 @@ fun CloudScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF0F1115))
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(innerPadding)
             ) {
                 // Curved Messages Container (HTML: bg-[#15171D] rounded-t-[32px] border-t border-white/5)
@@ -209,8 +209,8 @@ fun CloudScreen(
                         .fillMaxWidth()
                         .weight(1f)
                         .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                        .background(Color(0xFF15171D))
-                        .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
                 ) {
                     // Header of file list
                     Row(

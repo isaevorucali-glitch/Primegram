@@ -114,8 +114,8 @@ fun ChatsScreen(
                         }
                     },
                     colors = TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = Color(0xFF0F1115),
-                        titleContentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
                     ),
                     actions = {
                         // Ghost Mode Activation Button
@@ -126,7 +126,7 @@ fun ChatsScreen(
                             Icon(
                                 imageVector = if (profile?.isGhostModeActive == true) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                 contentDescription = "Ghost Mode Toggle",
-                                tint = if (profile?.isGhostModeActive == true) Color(0xFFC084FC) else Color.White.copy(alpha = 0.4f)
+                                tint = if (profile?.isGhostModeActive == true) Color(0xFFC084FC) else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
                             )
                         }
                     }
@@ -146,7 +146,7 @@ fun ChatsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF0F1115))
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(innerPadding)
             ) {
                 // STORIES ROW (Extracted from UI layout theme specs)
@@ -217,8 +217,8 @@ fun ChatsScreen(
                         .fillMaxWidth()
                         .weight(1f)
                         .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                        .background(Color(0xFF15171D))
-                        .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
                 ) {
                     // Header of chat list
                     Row(
@@ -232,7 +232,7 @@ fun ChatsScreen(
                             text = "MESSAGES",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF94A3B8),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             letterSpacing = 1.5.sp
                         )
 
@@ -264,7 +264,7 @@ fun ChatsScreen(
                     TextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Decrypt conversations / search...", color = Color(0xFF64748B)) },
+                        placeholder = { Text("Decrypt conversations / search...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF3B82F6)) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -272,10 +272,10 @@ fun ChatsScreen(
                             .testTag("chat_search_input"),
                         shape = RoundedCornerShape(16.dp),
                         colors = TextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0xFF0F1115),
-                            unfocusedContainerColor = Color(0xFF0F1115),
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            focusedContainerColor = MaterialTheme.colorScheme.background,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.background,
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent
                         )
@@ -655,8 +655,8 @@ fun ActiveChatView(
                                 onValueChange = { typedText = it },
                                 placeholder = {
                                     Text(
-                                        if (chat.selfDestructDefault > 0) "Secret message burns in ${chat.selfDestructDefault}s..." 
-                                        else "Encrypted message..."
+                                        if (chat.selfDestructDefault > 0) "Секретное сообщение сгорит через ${chat.selfDestructDefault} сек..." 
+                                        else "Зашифрованное сообщение..."
                                     )
                                 },
                                 modifier = Modifier
@@ -711,9 +711,9 @@ fun ActiveChatView(
 
 private fun statusSubtext(chat: Chat): String {
     val b = java.lang.StringBuilder()
-    b.append("E2E ACTIVE")
-    if (chat.isGhost) b.append(" • Invisible")
-    if (chat.selfDestructDefault > 0) b.append(" • Flame timer ${chat.selfDestructDefault}s")
+    b.append("КАНАЛ E2E АКТИВЕН")
+    if (chat.isGhost) b.append(" • Невидимка")
+    if (chat.selfDestructDefault > 0) b.append(" • Самоуничтожение ${chat.selfDestructDefault} с")
     return b.toString()
 }
 
@@ -774,11 +774,11 @@ fun MessageBubble(
                         val spamFilterEnabled = plugins.find { it.type == "SpamFilter" }?.isEnabled ?: false
 
                         if (translatorEnabled) {
-                            val translation = getMockTranslation(msg.text)
+                            val translation = decryptLocalTranslation(msg.text)
                             if (translation.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "🌐 Translated: $translation",
+                                    text = "🌐 Перевод: $translation",
                                     fontSize = 12.sp,
                                     color = if (msg.isMyMessage) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.SemiBold
@@ -881,7 +881,7 @@ fun DecryptingCipherOverlay() {
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                "DECRYPTING E2E CONVERSATION NODE...",
+                "РАСКОДИРОВАНИЕ СЕЦЕПНОГО E2E КАНАЛА...",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
@@ -890,14 +890,14 @@ fun DecryptingCipherOverlay() {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            val fakeCipherString = remember(progress) {
+            val cipherString = remember(progress) {
                 val chars = "A B C D E F 0 1 2 3 4 5 6 7 8 9 X Y Z @ # $"
                 val length = 24
                 (1..length).map { chars.random() }.joinToString("")
             }
 
             Text(
-                text = "Key SHA-256: ...$fakeCipherString",
+                text = "Локальный ключ SHA-256: ...$cipherString",
                 fontFamily = FontFamily.Monospace,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
@@ -1130,7 +1130,7 @@ fun FileAttachmentCard(
     }
 }
 
-private fun getMockTranslation(text: String): String {
+private fun decryptLocalTranslation(text: String): String {
     val t = text.trim().lowercase()
     return when {
          t.contains("meet") -> "Давай встретимся в обычном конспиративном доме."

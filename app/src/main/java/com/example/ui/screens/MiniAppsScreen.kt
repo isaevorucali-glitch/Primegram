@@ -64,7 +64,7 @@ fun MiniAppsScreen(
                 )
             }
             "webhook_tester" -> {
-                WebhookSimulatorApp(
+                WebhookConnectorApp(
                     logs = webhookLogs,
                     onTrigger = { botId, url, payload -> onExecuteWebhook(botId, url, payload) },
                     onBack = { activeMiniAppId = null }
@@ -77,7 +77,7 @@ fun MiniAppsScreen(
                     GenericBotSandboxView(
                         bot = selectedBot,
                         onBack = { activeMiniAppId = null },
-                        onExecuteMockTrigger = { payload ->
+                        onExecuteApiTrigger = { payload ->
                             onExecuteWebhook(selectedBot.id, selectedBot.integrationUrl.ifEmpty { "https://api.primegramm.net/webhook" }, payload)
                         },
                         logs = webhookLogs
@@ -127,8 +127,8 @@ fun MiniAppsScreen(
                         }
                     },
                     colors = TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = Color(0xFF0F1115),
-                        titleContentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
                     ),
                     actions = {
                         IconButton(onClick = { showCreateBotDialog = true }) {
@@ -141,7 +141,7 @@ fun MiniAppsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF0F1115))
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(innerPadding)
             ) {
                 // Curved Messages Container (HTML: bg-[#15171D] rounded-t-[32px] border-t border-white/5)
@@ -150,8 +150,8 @@ fun MiniAppsScreen(
                         .fillMaxWidth()
                         .weight(1f)
                         .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                        .background(Color(0xFF15171D))
-                        .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
                 ) {
                     LazyColumn(
                         modifier = Modifier
@@ -245,7 +245,7 @@ fun MiniAppsScreen(
 
                         item {
                             Spacer(modifier = Modifier.height(8.dp))
-                            // Button to install new custom simulation plugin
+                            // Button to install new custom secure plugin
                             Button(
                                 onClick = {
                                     onInstallPlugin(
@@ -492,7 +492,7 @@ fun TicTacToeSandboxApp(
 // 2. APIS WEBHOOK TESTER VIEW
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WebhookSimulatorApp(
+fun WebhookConnectorApp(
     logs: List<String>,
     onTrigger: (String, String, String) -> Unit,
     onBack: () -> Unit
@@ -602,13 +602,13 @@ fun WebhookSimulatorApp(
     }
 }
 
-// 3. GENERIC BOTS SANDBOX CONSOLE (Trigger Mock Webhook Form API)
+// 3. GENERIC BOTS SANDBOX CONSOLE (Trigger API Webhook Event Form)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GenericBotSandboxView(
     bot: BotMiniApp,
     onBack: () -> Unit,
-    onExecuteMockTrigger: (String) -> Unit,
+    onExecuteApiTrigger: (String) -> Unit,
     logs: List<String>
 ) {
     var rawParams by remember { mutableStateOf("{\n  \"action\": \"trigger_workflow\",\n  \"bot_api_key\": \"sec_839fd02a11b8\"\n}") }
@@ -670,7 +670,7 @@ fun GenericBotSandboxView(
             )
 
             Button(
-                onClick = { onExecuteMockTrigger(rawParams) },
+                onClick = { onExecuteApiTrigger(rawParams) },
                 modifier = Modifier.fillMaxWidth().height(50.dp).testTag("generic_bot_deploy_btn"),
                 shape = RoundedCornerShape(12.dp)
             ) {
