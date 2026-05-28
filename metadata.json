@@ -1,0 +1,6 @@
+{
+  "name": "Primegramm",
+  "description": "Primegramm is a fully functional secure anonymous messenger featuring ghost mode, end-to-end encryption, self-destruct messages, premium profile perks, multiple custom themes, group calls, cloud files, interactive bots, and gamification.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
